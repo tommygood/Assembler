@@ -222,11 +222,11 @@ void printSymbolTable(char ** symbol_table, int record_len) {
 		int address = atoi(str[1]);
 		// print a comma at the end of each symbol if not the last symbol
 		if (first_symbol) {
-	            printf("'%s' : '%x'", symbol, address);
+	            printf("'%s' : '0x%x'", symbol, address);
 		    first_symbol = 0;
 		}
 		else {
-	            printf(", '%s' : '%x'", symbol, address);
+	            printf(", '%s' : '0x%x'", symbol, address);
 		}
 	    }
         }
@@ -337,11 +337,11 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 
 			// check if mnemonic is test or normal
 			if (mnemonic == "Mnemonic") {
-			    printf("Label : Mnemonic: %s, operand : %s\n", s_arr[0], operand);
+			    printf("Label : Mnemonic: %s operand : %s\n", s_arr[0], operand);
 			}
 			else {
 			    // TEST Mnemonic
-			    printf("Label : TEST Mnemonic: %s, operand : %s\n", s_arr[1], operand);
+			    printf("Label : TEST Mnemonic: %s operand : %s\n", s_arr[1], operand);
 		            // print the address of symbol
 			    char * symbol_name = s_arr[0];
 			    // convert int adddress to string
@@ -378,16 +378,13 @@ char ** mkOpcodeTable() {
 }
 
 int main() {
-    char * filename = "./testprog1.S"; // program name
+    char * filename = "./testprog.S"; // program name
     int record_len = recordLen(filename);
     char ** all_str = readFile(filename);
     // make opcode table
     int opcode_table_record_len = recordLen("opcode.txt");
     char ** opcode_table = mkOpcodeTable();
+    // make symbol table
     char ** symbol_table = mkSymbolTable(all_str, record_len, opcode_table, opcode_table_record_len);
-    printSymbolTable(symbol_table, record_len);
-    //char * a = "ADD";
-    //char s[3] = "ADD";
-    //printf("len %d %d %d\n", strlen(s), strlen("ADD"), strlen(a));
-    //find(s);
+    printSymbolTable(symbol_table, record_len); // print values in symbol table
 }
