@@ -88,19 +88,31 @@ char ** hashTable(char ** all_str, int record_len, int size) {
     return hash_table;
 }
 
+char * removeLastRedundantChar(char * s) {
+	// remove last character if is junk value
+	char * n_str = calloc(strlen(s), sizeof(char));
+	int index = 0;
+	for (int i = 0;i < strlen(s);i++) {
+		if (s[i] != NULL && s[i] != ' ' && s[i] != '\n') {
+			n_str[index++] = s[i];
+		}
+	}
+	return n_str;
+}
+
 int cmpMnemonic(char * str, char * c, int record_len) {
     for (int i = 0;i < record_len;i++) {
         if (str[i] == ' ') {
             if (i != strlen(c)) { // not same length, then not same string
                 // minus a char of new line
-	    	//printf("%s and %s are not the same string, as length different %s %s\n", str, c, strlen(str), strlen(c));
-	    	//printf("%s and %s are not the same string, as length different, %d %d\n", str, c, strlen(c), i);
+	    	    //printf("%s and %s are not the same string, as length different %s %s\n", str, c, strlen(str), strlen(c));
+	    	    //printf("%s and %s are not the same string, as length different, %d %d [%c]\n", str, c, strlen(c), i, c[4]);
                 return 1; // not same string
             }
             break;
         }
         if (str[i] != c[i]) {
-	    //printf("%s and %s are not the same string, as the char different %c %c\n", str, c, str[i], c[i]);
+	        //printf("%s and %s are not the same string, as the char different %c %c\n", str, c, str[i], c[i]);
             return 1; // not same string
         }
     }
@@ -139,6 +151,19 @@ int getCode(char * c) {
 }
 
 char * find(char * mnemonic, char ** hash_table, int record_len) {
+    // omit the extended symbol
+	if (mnemonic[0] == '+') {
+		char * n_str = calloc(strlen(mnemonic), sizeof(char));
+		int index = 0;
+		for (int i = 1;i < strlen(mnemonic);i++) {
+			n_str[index++] = mnemonic[i];
+		}
+		mnemonic = n_str;
+	}
+
+    // remove last character if is junk value
+    mnemonic = removeLastRedundantChar(mnemonic);
+
     int mnemonic_index = getCode(mnemonic);
     //int record_len = sizeof(hash_table) / sizeof(hash_table[0]);
     mnemonic_index = mnemonic_index % record_len;
