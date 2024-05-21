@@ -283,6 +283,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 
     int is_started = 0;
 	int address;
+    char ** object_code_table = calloc(record_len, sizeof(char *));
     for (int i = 0;i < record_len;i++) {
 		char * line = all_str[i];
 		line = commaRemoveSpace(line); // remove a space behind the comma 
@@ -294,6 +295,8 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 		
 		//printf("basic instruction is %d\n", basic_instruction);
 		printf("address : %x\n", address);
+		
+		char * object_code; // object code of this line
 		if (basic_instruction == 1) {
 			// START
 			is_started = 1;
@@ -345,6 +348,9 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 						printf("WORD is pesudo instruction code\n");
 						int space = 3;
 						address += space;
+						object_code = calloc(6, sizeof(char));	
+						sprintf(object_code, "%d", s_arr[2]); // convert int operand to string
+						printf("object code : %s\n", object_code);
 					}
 					else if (basic_instruction == 4) {
 						// RESW
@@ -356,17 +362,44 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 						// BYTE
 						printf("BYTE is pesudo instruction code\n");
 						int space;
+						object_code = calloc(6, sizeof(char));	
 						if (s_arr[2][0] == 'C') {
 							// char
 							// the nums of char
 							int char_nums = strlen(s_arr[2])-4; // minus the two single quotation and one type and a space at the last char
 							space = char_nums;
 							printf("c char nums : %d %c %c", strlen(s_arr[1]), s_arr[2][5], s_arr[2][6]==' ');
+							// make object code
+							for (int j = 2;j < strlen(s_arr[2]);j++) {
+							    if (s_arr[2][j] == 39) {
+								// stop when counter the char of '
+								break;
+							    }
+							    else {
+								int temp_int = s_arr[2][j];
+								char * temp_str = calloc(3, sizeof(char));
+								sprintf(temp_str, "%X", temp_int); // convert operand str to hex
+								object_code = strcat(object_code, temp_str);
+							    }
+							}
 						}
 						else if (s_arr[2][0] == 'X') {
 							// int
 							space = 1;
+							// make object code
+							for (int j = 2;j < strlen(s_arr[2]);j++) {
+							    if (s_arr[2][j] == 39) {
+								// stop when counter the char of '
+								break;
+							    }
+							    else {
+								char * temp_str = calloc(1, sizeof(char));
+								temp_str[0] = s_arr[2][j];
+								object_code = strcat(object_code, temp_str);
+							    }
+							}
 						}
+						printf("object code : %s\n", object_code);
 						address += space;
 					}
 					else if (basic_instruction == 6) {
