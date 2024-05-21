@@ -351,7 +351,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 						printf("RESW is pesudo instruction code\n");
 						int space = atoi(s_arr[2]) * 3;
 						address += space;
-						}
+					}
 					else if (basic_instruction == 5) {
 						// BYTE
 						printf("BYTE is pesudo instruction code\n");
@@ -359,8 +359,9 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 						if (s_arr[2][0] == 'C') {
 							// char
 							// the nums of char
-							int char_nums = strlen(s_arr[2])-3; // minus the two single quotation and one type
+							int char_nums = strlen(s_arr[2])-4; // minus the two single quotation and one type and a space at the last char
 							space = char_nums;
+							printf("c char nums : %d %c %c", strlen(s_arr[1]), s_arr[2][5], s_arr[2][6]==' ');
 						}
 						else if (s_arr[2][0] == 'X') {
 							// int
@@ -409,8 +410,16 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 							printf("Label : TEST Mnemonic: %s operand : %s\n", s_arr[1], operand);
 							// print the address of symbol
 							char * symbol_name = s_arr[0];
+							
 							// convert int adddress to string
-							int address_length = (int)((ceil(log10(address))+1)*sizeof(char)); // length of int
+							int address_length; // length of int
+							if (address == 0) {
+								address_length = 1;
+							}
+							else {
+								address_length = (int)((ceil(log10(address))+1)*sizeof(char));
+							}
+							//printf("%d\n", address);
 							char str_address[address_length];
 							sprintf(str_address, "%d", address); // convert int adddress to string
 							// concat the symbol name and a space and address
@@ -443,7 +452,7 @@ char ** mkOpcodeTable() {
 }
 
 int main() {
-    char * filename = "./testprog2.S"; // program name
+    char * filename = "./testprog3.S"; // program name
     int record_len = recordLen(filename);
     char ** all_str = readFile(filename);
     // make opcode table
