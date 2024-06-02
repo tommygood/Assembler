@@ -179,6 +179,8 @@ char * find(char * mnemonic, char ** hash_table, int record_len) {
 		mnemonic = n_str;
 	}
 
+    //printf("find start : %s\n", mnemonic);
+
     // remove last character if is junk value
     mnemonic = removeLastRedundantChar(mnemonic);
 
@@ -190,11 +192,15 @@ char * find(char * mnemonic, char ** hash_table, int record_len) {
 
     int have_looped = 0;
     while (cmpMnemonic(hash_table[mnemonic_index], mnemonic, record_len)) {
-	//printf("hash value : %s %s\n", hash_table[mnemonic_index], mnemonic);
-        //printf("find index : %d, temp index : %d, record len : %d\n", mnemonic_index, temp_mnemonic_index, record_len);
+	    //printf("hash value : %s %s\n", hash_table[mnemonic_index], mnemonic);
+        //printf("find index : %d, temp index : %d, record len : %d; hash value : %s %s\n", mnemonic_index, temp_mnemonic_index, record_len, hash_table[mnemonic_index], mnemonic);
         if (have_looped && mnemonic_index == temp_mnemonic_index) {
             // stop finding when back to start index
-            printf("can not found the value of key in the hash table : %s\n", mnemonic);
+            //printf("can not found the value of key in the hash table : %s\n", mnemonic);
+            //for (int i = 0;i < record_len;i++)
+            //printf("%d : %s\n", i, hash_table[i]);
+            //printf("index 46 : %s, 45 : %s\n", hash_table[46], hash_table[45]);
+            //printf("find finish\n");
             //printf("invalid\n");
             return "0";
         }
@@ -207,9 +213,10 @@ char * find(char * mnemonic, char ** hash_table, int record_len) {
     }
 
     // output
+    //printf("find finish\n");
     //printf("the relative opcode of %s = %s", mnemonic, getOpcode(hash_table[mnemonic_index])); 
     //char * opcode = getOpcode(hash_table[mnemonic_index]);
-    char * opcode = hash_table[mnemonic_index];
+    char * opcode = strdup(hash_table[mnemonic_index]);
     //printf("opCode : %s\n", opcode);
     return opcode;
 }

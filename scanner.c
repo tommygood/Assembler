@@ -15,8 +15,9 @@ char ** object_program;
 int object_program_size;
 int cur_t_record_size = 0; // size of current t record
 int cur_t_record_length_index = 7; // index of length of object code in this t record in bytes(hex)
-int cur_t_record_new_line = 0;
+int cur_t_record_new_line = 0; // add a new line in t record if this value turn to 1
 char ** forward_ref_table_format_four_address;
+char ** m_records;
 
 // base register, which will store the address of a symbol
 int base;
@@ -28,8 +29,11 @@ int error_occured = 0;
 // current number of line
 int line_num;
 
+// record the line use the forward reference symbol
+char ** symbol_line_table;
+
 void throwError(char * error_msg) {
-	printf("line %d, Error : %s\n", line_num, error_msg);
+	printf("line %d, Error : %s!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", line_num, error_msg);
 	error_occured = 1; // not print the object program at last if there have a error occured
 }
 
@@ -56,6 +60,9 @@ void printObjectProgram() {
 			}
 		}
 		printf("=========================================================\n");
+	}
+	else {
+		printf("stop output the object program, as the error occur\n");
 	}
 }
 
@@ -86,7 +93,7 @@ char * fillCharAtLast(char * s, int num, char c) {
 }
 
 // add t record in object program
-void addTRecord(int address, char * s) {
+void addTRecord(int address, char * s, int format) {
 	if (cur_t_record_size == 0 || cur_t_record_size + strlen(s) > 60 || cur_t_record_new_line) {
 		// first t record or over the size limit of t record, add a new t record
 		char * t_record = calloc(30, sizeof(char));
@@ -114,6 +121,21 @@ void addTRecord(int address, char * s) {
 	strcat(t_record, s);
 	object_program[getLenStrArr(object_program)] = t_record;
 	cur_t_record_size += strlen(s);
+
+	// add a m record if is format 4
+	if (format == 4) {
+		char * m_record = calloc(30, sizeof(char));
+		strcat(m_record, "\nM ");
+		char str_address[intLength(address+1)];
+		sprintf(str_address, "%X", address+1); // convert int adddress to string
+		strcat(m_record, fillZeroAtFirst(str_address, 6));
+		strcat(m_record, " ");
+		char str_len[intLength(strlen(s)-3)];
+		sprintf(str_len, "%X", strlen(s)-3); // convert int adddress to string
+		char * temp = fillZeroAtFirst(str_len, 2);
+		strcat(m_record, temp);
+		m_records[getLenStrArr(m_records)] = m_record;
+	}
 }
 
 void addERecord(char * first_executable_instruction) {
@@ -130,7 +152,10 @@ void addERecord(char * first_executable_instruction) {
 	e_record[1] = 'E';
 	e_record[2] = ' ';
 	if (first_executable_instruction != "null") {
-		strcat(e_record, fillZeroAtFirst(first_executable_instruction, 6));
+		int num = strToHex(first_executable_instruction);
+		char temp[intLength(num)];
+		sprintf(temp, "%X", num);
+		strcat(e_record, fillZeroAtFirst(temp, 6));
 	}
 	else {
 		throwError("ERROR : first executable instruction is missed !\n"); // throw error and not print the object program at last
@@ -140,7 +165,7 @@ void addERecord(char * first_executable_instruction) {
 
 void addHRecordStart(char * program_name, int start_address) {
 	// add the info of header record except the length of object program
-	start_address = decimalIntConvertToHex(start_address);
+	start_address = (start_address);
 	object_program[0] = "H ";
 	object_program[1] = "";
 	object_program[2] = strcat(fillCharAtLast(program_name, 6, ' '), " ");
@@ -154,11 +179,10 @@ void addHRecordStart(char * program_name, int start_address) {
 
 void addHRecordLength(int last_address) {
 	// add the length of object program in the header record by bytes(hex)
-	int start_address = atoi(object_program[3]);
-	
-	int length = decimalIntConvertToHex(last_address - start_address);
+	int start_address = strToHex(object_program[3]);
+	int length = (last_address - start_address);
 	char temp[intLength(length)];
-	sprintf(temp, "%d", length);
+	sprintf(temp, "%X", length);
 	char * n_temp = fillZeroAtFirst(temp, 6); 
 	object_program[5] = n_temp; 
 }
@@ -304,7 +328,7 @@ char * removeComment(char * line) {
 int isBasic(char * line) {
     char * second_place = split(line, ' ')[1];
     char * first_place = split(line, ' ')[0];
-    if (second_place == '\0') // avoid  
+    if (second_place == '\0' || second_place == NULL) // avoid  
 		return 0;
     if (strcmp(second_place, "START") == 0)
 		return 1;
@@ -326,15 +350,25 @@ int isBasic(char * line) {
 
 char * isMnemonic(char * first_str, char * sec_str, char * third_str, char ** opcode_table, int record_len) {
     // check whether the instruction contains a valid mnemonic
-    if (third_str != NULL && sec_str != NULL && getOpcode(find(sec_str, opcode_table, record_len)) != "0") {
-		// this instruction have three split string means the first string can be the symbol
+    if (sec_str != NULL && find(sec_str, opcode_table, record_len) != "0") {
+		// this instruction have three sperate string means the first string can be the symbol
 		return "TEST Mnemonic";
     }
-    else if (first_str != NULL && getOpcode(find(first_str, opcode_table, record_len)) != "0") {
+    else if (first_str != NULL && find(first_str, opcode_table, record_len) != "0") {
 		return "Mnemonic";
     }
     else {
-		printf("not valid mnemonic : %s %s\n", first_str, sec_str);
+		if (first_str != NULL) {
+			char temp[] = "mnemonic error, not a valid mnemonic : ";
+			strcat(temp, first_str);
+			throwError(temp);
+		}
+		else if (sec_str != NULL) {
+			char temp[] = "mnemonic error, not a valid mnemonic : ";
+			strcat(temp, sec_str);
+			throwError(temp);
+		}
+		
 		return "null";
     }
 }
@@ -472,6 +506,7 @@ char * omitFirstVal(char * s) {
 
 int getIndexOfVal(char * val, char ** arr, int arr_len) {
 	// get the index of val in arr
+	val = split(val, ',')[0];
 
 	for (int i = 0;i < arr_len;i++) {
 		if (strcmp(val, registers[i]) == 0) {
@@ -522,10 +557,9 @@ char * makeObjectCodeLast(int address, int format, char * str_operand) {
 
 	if (is_negative) {
 		// convert to two's complement
-		//printf("%s need to convert to two's complement\n", last_char);
+		printf("%s need to convert to two's complement\n", last_char);
 		last_char = twosComplement(last_char);
 	}
-	//
 	return last_char;
 }
 
@@ -555,14 +589,14 @@ char * getObjectCode(char * opcode, char * symbol_address, int program_counter, 
 		last_three_char = fillZeroAtFirst(NULL, formatAddressLen(format));
 	}
 	else {
-		int displacement = strConvertToHex(symbol_address) - program_counter;
+		int displacement = strToHex(symbol_address) - program_counter;
 		// first three char
 
 		if (isProgramCounterRelative(displacement)) {
 			first_three_char = makeObjectCodeFront(opcode, n, i, x, 0, 1, format);
 		}
 		else {
-			//printf("%s at %s, pc = %d is going to use base relative, as the displacement %d\n", opcode, symbol_address, program_counter, displacement);
+			//printf("opcode %s at %s, pc = %X is going to use base relative, as the displacement %d\n", opcode, symbol_address, program_counter, displacement);
 			if (base == NULL) {
 				throwError("BASE Register is not defined !"); // throw error and not print the object program at last
 			}
@@ -573,20 +607,52 @@ char * getObjectCode(char * opcode, char * symbol_address, int program_counter, 
 			first_three_char = makeObjectCodeFront(opcode, n, i, x, 1, 0, format);
 		}
 		// last three char
+		printf("displacment : %d = sa : %X - pc : %X\n", displacement, strToHex(symbol_address), program_counter);
 		last_three_char = makeObjectCodeLast(displacement, format, opernad);
 	}
-	//printf("symbol address : %s%s, format : %d\n", first_three_char, last_three_char, format);
+	printf("symbol address : %s%s, format : %d\n", first_three_char, last_three_char, format);
 	strcat(first_three_char, last_three_char); // combine first and last string to a complete object code of this line
 	return first_three_char;
+}
+
+void insertValueInHashTable(char * str, char ** hash_table, int size) {
+    // find a empty space in hash table to place the value
+
+	int val = getCodeOpcode(str);
+	int index = val % size;
+	//printf("%s, %d\n", all_str[i], index);
+	if (hash_table[index] == NULL) { // the bucket not have value
+		hash_table[index] = str;
+	}
+	else { // probing other empty bucket
+		// linear probing the empty bucket
+		int empty_bucket = -1;
+		for (int i = 0;i < size;i++) {
+			if (hash_table[i] == NULL) {
+				empty_bucket = i;
+				break;
+			}
+		}
+
+		// check whether have empty bucket
+		if (empty_bucket == -1) {
+			printf("no more empty bucket %s\n", str);
+		}
+		else {
+			hash_table[empty_bucket] = str;
+		}
+	}
 }
 
 void insertValueInForwardRefTable(char * symbol, int address, int program_counter, char ** hash_table, int size, int format) {
 	// record the forward reference symbol and the address need to be modified
 
-	if (isEmptyStr(symbol)) {
-		// check if symbol is empty
+	if (isEmptyStr(symbol) || getIndexOfVal(symbol, registers, 9) != -1) {
+		// check if symbol is empty or is a register
 		return;
 	}
+
+	char * temp_symbol = strdup(symbol);
 
 	int val = getCodeOpcode(symbol);
 	int index = val % size;
@@ -642,35 +708,13 @@ void insertValueInForwardRefTable(char * symbol, int address, int program_counte
 			hash_table[empty_bucket] = symbol;
 		}
 	}
-}
 
-void insertValueInHashTable(char * str, char ** hash_table, int size) {
-    // find a empty space in hash table to place the value
-
-	int val = getCodeOpcode(str);
-	int index = val % size;
-	//printf("%s, %d\n", all_str[i], index);
-	if (hash_table[index] == NULL) { // the bucket not have value
-		hash_table[index] = str;
-	}
-	else { // probing other empty bucket
-		// linear probing the empty bucket
-		int empty_bucket = -1;
-		for (int i = 0;i < size;i++) {
-			if (hash_table[i] == NULL) {
-				empty_bucket = i;
-				break;
-			}
-		}
-
-		// check whether have empty bucket
-		if (empty_bucket == -1) {
-			printf("no more empty bucket %s\n", str);
-		}
-		else {
-			hash_table[empty_bucket] = str;
-		}
-	}
+	// record the line of forward reference
+	char * str_line = calloc(sizeof(intLength(line_num)), sizeof(char));
+	sprintf(str_line, "%d", line_num);
+	strcat(temp_symbol, " ");
+	strcat(temp_symbol, str_line);
+	insertValueInHashTable(temp_symbol, symbol_line_table, size);
 }
 
 int formatAddressLen(int format) {
@@ -698,7 +742,7 @@ int isEmptyStr(char * s) {
 }
 
 // check the addressing type of operand, and make the object code
-char ** MakeObjectCodeWithAddressingType(char * mnemonic, char * operand, int format, char ** symbol_table, int record_len, int address, char ** opcode_table, char ** forward_ref_table, char ** object_code_table) {
+void dealWithAddressingType(char * mnemonic, char * operand, int format, char ** symbol_table, int record_len, int address, char ** opcode_table, char ** forward_ref_table, char ** object_code_table) {
     if (isIndexAddressing(mnemonic, operand)) {
         printf("This is index addressing\n");
 		char * opcode = getOpcode(find(mnemonic, opcode_table, record_len));
@@ -708,12 +752,12 @@ char ** MakeObjectCodeWithAddressingType(char * mnemonic, char * operand, int fo
 		if (symbol_address[0] != '0') {
 			// symbol is existed in current symbol table
 			symbol_address = split(symbol_address, ' ')[1];
-			addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 1, 1, 1, operand));
+			addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 1, 1, 1, operand), format);
 		}
 		else {
 			// symbol is not existed in current symbol table
 			insertValueInForwardRefTable(symbol, address, program_counter, forward_ref_table, record_len, format);
-			addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 1, 1, 1, operand));
+			addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 1, 1, 1, operand), format);
 		}
     }
     else if (isInDirectAddresing(operand)) {
@@ -726,13 +770,13 @@ char ** MakeObjectCodeWithAddressingType(char * mnemonic, char * operand, int fo
 		if (symbol_address[0] != '0') {
 			// symbol is existed in current symbol table
 			symbol_address = split(symbol_address, ' ')[1];
-			addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 1, 0 ,0, operand));
+			addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 1, 0 ,0, operand), format);
 		}
 		else {
 			// symbol is not existed in current symbol table
 			printf("indirect forward addressing %s : %X\n", symbol, address);
 			insertValueInForwardRefTable(omitFirstVal(symbol), address, program_counter, forward_ref_table, record_len, format);
-			addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 1, 0, 0, operand));
+			addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 1, 0, 0, operand), format);
 		}
     }
     else if (isImmediateAddresing(operand)) {
@@ -748,7 +792,7 @@ char ** MakeObjectCodeWithAddressingType(char * mnemonic, char * operand, int fo
 			sprintf(temp, "%X", strToHex(omitFirstVal(operand)));
 			char * last_three_char = makeObjectCodeLast(atoi(temp), format, operand);
 			strcat(first_three_char, last_three_char);
-			addTRecord(address, first_three_char);
+			addTRecord(address, first_three_char, NULL); // although the extended format, it still does not need the m record with immediate addressing
 		}
 		else {
 			// the operand is a symbol, then the displacement = symbol address - program counter
@@ -758,12 +802,12 @@ char ** MakeObjectCodeWithAddressingType(char * mnemonic, char * operand, int fo
 			if (symbol_address[0] != '0') {
 				// symbol is existed in current symbol table
 				symbol_address = split(symbol_address, ' ')[1];
-				addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 0, 1, 0, operand));
+				addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 0, 1, 0, operand), NULL); // although the extended format, it still does not need the m record with immediate addressing
 			}
 			else {
 				// symbol is not existed in current symbol table
 				insertValueInForwardRefTable(symbol, address, program_counter, forward_ref_table, record_len, format);
-				addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 0, 1, 0, operand));
+				addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 0, 1, 0, operand), NULL); // although the extended format, it still does not need the m record with immediate addressing
 			}
 		}
     }
@@ -777,12 +821,12 @@ char ** MakeObjectCodeWithAddressingType(char * mnemonic, char * operand, int fo
 		if (symbol_address[0] != '0') {
 			// symbol is existed in current symbol table
 			symbol_address = split(symbol_address, ' ')[1];
-			addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 1, 1, 0, operand));
+			addTRecord(address, getObjectCode(opcode, symbol_address, program_counter, format, 1, 1, 0, operand), format);
 		}
 		else {
 			// symbol is not existed in current symbol table
 			insertValueInForwardRefTable(symbol, address, program_counter, forward_ref_table, record_len, format);
-			addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 1, 1, 0, operand));
+			addTRecord(address, getObjectCode(opcode, NULL, program_counter, format, 1, 1, 0, operand), format);
 		}
     }
 }
@@ -870,7 +914,8 @@ int isExtendedAddress(char * address) {
 }
 
 void dealForwardRef(char * symbol, char ** forward_ref_table, int record_len, int symbol_address) {
-	char * symbol_refs = find(symbol, forward_ref_table, record_len);
+	// deal with the instructions are forward reference relative symbol
+	char * symbol_refs = find(symbol, forward_ref_table, record_len); // all lines forward reference this symbol 
 
 	if (symbol_refs != "0") {
 		// add all T records about previous forward reference
@@ -918,6 +963,41 @@ void dealForwardRef(char * symbol, char ** forward_ref_table, int record_len, in
 			object_program[getLenStrArr(object_program)] = t_record;
 			cur_t_record_new_line = 1;
 		}
+		// clean the forward reference records of this symbol
+		symbol_refs = "0";
+	}
+}
+
+void checkUndefinedSymbol(char ** forward_ref_table, char ** symbol_table, int record_len) {
+	// check if still exist the redundant forward reference symbol which not be resolved
+	for (int i = 0;i < record_len;i++) {
+		// printf("aa : %d\n", forward_ref_table[i] == NULL);
+		if (forward_ref_table[i] != NULL) {
+			// check if this symbol exist
+			char * symbol = split(forward_ref_table[i], ' ')[0];
+			if (find(symbol, symbol_table, record_len) == "0") {
+				// symbol not defined, make error msg
+				char * error_msg = calloc(30, sizeof(char));
+				strcat(error_msg, "Undefined Symbol : ");
+				strcat(error_msg, symbol);
+				char * symbol_line = find(symbol, symbol_line_table, record_len);
+				line_num = atoi(split(symbol_line, ' ')[1]);			
+				throwError(error_msg);
+			}
+		}
+	}
+}
+
+void addMRecord() {
+	// add the m records into the object program
+	int object_program_len = getLenStrArr(object_program);
+	for (int i = 0;i < getLenStrArr(m_records);i++) {
+		if (m_records[i] == NULL) {
+			break;
+		}
+		else {
+			object_program[object_program_len++] = m_records[i];
+		}
 	}
 }
 
@@ -932,6 +1012,8 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 	int object_code_table_index = 0;
 	char ** forward_ref_table = calloc(record_len, sizeof(char *)); // forward reference table
 	char * first_executable_instruction = "null";
+	symbol_line_table = calloc(record_len, sizeof(char *)); // record the symbol is on which line of source program
+	m_records = calloc(record_len, sizeof(char *));
     for (int i = 0;i < record_len;i++) {
 		char * line = all_str[i];
 		
@@ -941,11 +1023,9 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 		// check this line is belong to normal instruction or basic function to use different way to locate
 		line_num = i+1;
 		printf("\n%d : %s\n", i+1, line);
-		printf("test\n");
 		int basic_instruction = isBasic(line);
-		printf("test1\n");
 		//printf("basic instruction is %d\n", basic_instruction);
-		printf("address : %x\n", address);
+		printf("address : %x, basic instruction : %d\n", address, basic_instruction);
 		
 		char * object_code; // object code of this line
 		if (basic_instruction == 1) {
@@ -967,6 +1047,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 		else {
 			char ** s_arr = split(line, ' ');
 			if (isSymbol(s_arr)) {
+				printf("test\n");
 				// print the address of symbol
 				char * symbol_name = s_arr[0];
 
@@ -975,6 +1056,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 					base = address;
 				}
 
+				printf("test1\n");
 				// convert int adddress to string
 				// count the length of int(address)
 				int address_length;
@@ -985,9 +1067,10 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 					address_length = ((ceil(log10(address))+1)*sizeof(char)); // length of int
 				}
 
+				printf("test2\n");
 				// check if symbol existed
 				if (find(symbol_name, symbol_table, record_len) != "0") {
-					// duplicated symbol, throw error
+					// duplic  ated symbol, throw error
 					char temp[] = "Duplicated symbol : ";
 					strcat(temp, symbol_name);
  					throwError(temp);
@@ -1027,12 +1110,14 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 						object_code = calloc(6, sizeof(char));	
 						sprintf(object_code, "%d", s_arr[2]); // convert int operand to string
 						object_code_table[object_code_table_index++] = object_code;
+						addTRecord(address, object_code, 3);
 					}
 					else if (basic_instruction == 4) {
 						// RESW
 						printf("RESW is pesudo instruction code\n");
 						int space = atoi(s_arr[2]) * 3;
 						address += space;
+						cur_t_record_new_line = 1;
 					}
 					else if (basic_instruction == 5) {
 						// BYTE
@@ -1077,7 +1162,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 							}
 						}
 						object_code_table[object_code_table_index++] = object_code;
-						addTRecord(address, object_code);
+						addTRecord(address, object_code, 3);
 						address += space;
 					}
 					else if (basic_instruction == 6) {
@@ -1085,6 +1170,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 						printf("RESB is pesudo instruction code\n");
 						int space = atoi(s_arr[2]);
 						address += space;
+						cur_t_record_new_line = 1;
 					}
 				}	
 			}
@@ -1094,7 +1180,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 					// check whether it is in opcode table
 					char * mnemonic = isMnemonic(s_arr[0], s_arr[1], s_arr[2], opcode_table, opcode_table_record_len);
 					if (mnemonic != "null") {
-
+						printf("this is a valid mnemonic %s\n", mnemonic);
 						// valid mnemonic
 						int operand_index = getLenStrArr(s_arr)-1; // operand is the last index of a line
 						char * operand = "";
@@ -1111,7 +1197,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 						int format_size = getFormatType(s_arr[mnemonic_index]);
 
 						// check the addressing type of operand
-						object_code = MakeObjectCodeWithAddressingType(s_arr[mnemonic_index], operand, format_size, symbol_table, record_len, address, opcode_table, forward_ref_table, object_code_table);
+						dealWithAddressingType(s_arr[mnemonic_index], operand, format_size, symbol_table, record_len, address, opcode_table, forward_ref_table, object_code_table);
 
 						// check if mnemonic is test or normal
 						if (mnemonic == "Mnemonic") {
@@ -1133,7 +1219,7 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 							}
 							//printf("%d\n", address);
 							char str_address[address_length];
-							sprintf(str_address, "%d", address); // convert int adddress to string
+							sprintf(str_address, "%X", address); // convert int adddress to string
 							// concat the symbol name and a space and address
 							char * temp_symbol_name = strdup(symbol_name);
 							char * hash_value = strcat(temp_symbol_name, " ");
@@ -1155,17 +1241,21 @@ char ** mkSymbolTable(char ** all_str, int record_len, char ** opcode_table, int
 		*/
     }
 	addHRecordLength(address);
+	addMRecord();
 	addERecord(first_executable_instruction);
+	checkUndefinedSymbol(forward_ref_table, symbol_table, record_len);
     return symbol_table;
 }
 
-char ** mkOpcodeTable() {
+char ** mkOpcodeTable(int source_program_record_len) {
     // find relative opcode and output
     char * filename = "./opcode.txt";
     int record_len = recordLen(filename);
+	if (source_program_record_len > record_len) {
+		record_len = source_program_record_len;
+	}
     char ** all_str = readFile(filename);
-
-    char ** hash_table = hashTable(all_str, record_len, record_len); // make a hash table with data in opcode.txt
+    char ** hash_table = hashTable(all_str, recordLen(filename), record_len); // make a hash table with data in opcode.txt
     return hash_table;
 }
 
@@ -1176,10 +1266,10 @@ int main() {
 	
     // make opcode table
     int opcode_table_record_len = recordLen("opcode.txt");
-    char ** opcode_table = mkOpcodeTable();
-	
+    char ** opcode_table = mkOpcodeTable(record_len);
 	
 	// make object program array
+	printf("ppp\n");
 	object_program_size = record_len*3;
 	object_program = calloc(object_program_size, sizeof(char *));
 	forward_ref_table_format_four_address = calloc(object_program_size, sizeof(char *));

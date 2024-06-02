@@ -1,3 +1,9 @@
+. comment
+  . indexed addressing
+.. free format coding
+. empty line detection
+. . comand line user filenames input
+
 COPY START 0		. program start here
 FIRST STL RETADR
 LDB #LENGTH
@@ -18,7 +24,6 @@ J @RETADR
 EOF BYTE C'EOF'
 RETADR RESW 1
 LENGTH RESW 1
-LENGTH RESW 3
 BUFFER RESB 4096
 .
 .
@@ -54,3 +59,5 @@ JLT WLOOP
 RSUB
 OUTPUT BYTE X'05'
 END FIRST
+
+.. . end of this program
