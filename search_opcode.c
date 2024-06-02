@@ -47,7 +47,11 @@ int getCodeOpcode(char * c) {
         if (c[i] == ' ') {
             break;
         }
-        code += (int)c[i];
+        int n = (int)c[i];
+        if (n < 0) {
+            n *= 1;
+        }
+        code += n;
     }
     return code;
 }
@@ -101,23 +105,35 @@ char * removeLastRedundantChar(char * s) {
 }
 
 int cmpMnemonic(char * str, char * c, int record_len) {
-    for (int i = 0;i < record_len;i++) {
-        if (str[i] == ' ') {
-            if (i != strlen(c)) { // not same length, then not same string
-                // minus a char of new line
-	    	    //printf("%s and %s are not the same string, as length different %s %s\n", str, c, strlen(str), strlen(c));
-	    	    //printf("%s and %s are not the same string, as length different, %d %d [%c]\n", str, c, strlen(c), i, c[4]);
+    if (str == NULL && c == NULL) {
+        return 0;
+    } 
+    else if (str == NULL && c != NULL) {
+        return 1;
+    }
+    else if (str != NULL && c == NULL) {
+        return 1;
+    }
+    else {
+        for (int i = 0;i < record_len;i++) {
+            if (str[i] == ' ') {
+                if (i != strlen(c)) { // not same length, then not same string
+                    // minus a char of new line
+                    //printf("%s and %s are not the same string, as length different %s %s\n", str, c, strlen(str), strlen(c));
+                    //printf("%s and %s are not the same string, as length different, %d %d [%c]\n", str, c, strlen(c), i, c[4]);
+                    return 1; // not same string
+                }
+                break;
+            }
+            if (str[i] != c[i]) {
+                //printf("%s and %s are not the same string, as the char different %c %c\n", str, c, str[i], c[i]);
                 return 1; // not same string
             }
-            break;
+
         }
-        if (str[i] != c[i]) {
-	        //printf("%s and %s are not the same string, as the char different %c %c\n", str, c, str[i], c[i]);
-            return 1; // not same string
-        }
+        //printf("%s and %s are same string\n", str, c);
+        return 0; // str and c are same string
     }
-    //printf("%s and %s are same string\n", str, c);
-    return 0; // str and c are same string
 }
 
 char * getOpcode(char * c) { // get opcode part of each line
@@ -130,7 +146,7 @@ char * getOpcode(char * c) { // get opcode part of each line
             start_opcode = 1;
             continue;
         }
-        if (start_opcode) {
+        if (start_opcode && c[i] != '\n' && c[i] != '\t') {
             temp[0] = c[i]; // temp is a char pointer to temp store the char
             opcode[index++] = c[i];
         }
@@ -143,10 +159,12 @@ char * getOpcode(char * c) { // get opcode part of each line
 
 int getCode(char * c) {
     int code = 0;
-    // last char is new line, so ignore it
-    for (int i = 0;i < strlen(c)-1;i++) {
-        code += (int)c[i];
-    }
+    if (strlen(c) > 0) {
+        // last char is new line, so ignore it
+        for (int i = 0;i < strlen(c)-1;i++) {
+            code += (int)c[i];
+        }
+    } 
     return code;
 }
 
@@ -165,28 +183,33 @@ char * find(char * mnemonic, char ** hash_table, int record_len) {
     mnemonic = removeLastRedundantChar(mnemonic);
 
     int mnemonic_index = getCode(mnemonic);
+
     //int record_len = sizeof(hash_table) / sizeof(hash_table[0]);
     mnemonic_index = mnemonic_index % record_len;
     int temp_mnemonic_index = mnemonic_index;
 
+    int have_looped = 0;
     while (cmpMnemonic(hash_table[mnemonic_index], mnemonic, record_len)) {
 	//printf("hash value : %s %s\n", hash_table[mnemonic_index], mnemonic);
-        mnemonic_index++;
-        if (mnemonic_index == temp_mnemonic_index) {
+        //printf("find index : %d, temp index : %d, record len : %d\n", mnemonic_index, temp_mnemonic_index, record_len);
+        if (have_looped && mnemonic_index == temp_mnemonic_index) {
             // stop finding when back to start index
-            //printf("can not found the opcode of %s\n", mnemonic);
+            printf("can not found the value of key in the hash table : %s\n", mnemonic);
             //printf("invalid\n");
             return "0";
         }
-        if (mnemonic_index >= record_len) {
+        if (mnemonic_index >= record_len-1) {
             // find from 0
-            mnemonic_index = 0;
+            mnemonic_index = -1;
+            have_looped = 1;
         }
+        mnemonic_index++; 
     }
 
     // output
-    //printf("the relative opcode of %s = %s", mnemonic, getOpcode(hash_table[mnemonic_index]));     
-    char * opcode = getOpcode(hash_table[mnemonic_index]);
+    //printf("the relative opcode of %s = %s", mnemonic, getOpcode(hash_table[mnemonic_index])); 
+    //char * opcode = getOpcode(hash_table[mnemonic_index]);
+    char * opcode = hash_table[mnemonic_index];
     //printf("opCode : %s\n", opcode);
     return opcode;
 }
