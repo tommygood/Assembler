@@ -21,6 +21,7 @@
   - 這邊的 forward reference table 不用使用 linked list 的原因：因 hash value 是以 `symbol forward_reference_line_number_1 forward_reference_line_number_2` 的格式去存值。<br/>
   但在做 hash function 找 index 時，會以 split 去切割空白，並只取用 symbol 作為要做 hash function 的對象，所以得到的 index 也會是以該 symbol 計算而來的。
 ### 流程圖
+- <img src="https://hackmd.io/_uploads/ryHLLVTVC.png"/>
 ### Demo
 #### test program 1
 - <a href = "https://github.com/tommygood/Assembler/blob/master/testprog3.S">source program</a> 
