@@ -26,6 +26,9 @@
 - <a href = "https://github.com/tommygood/Assembler/blob/master/testprog3.S">source program</a> 
 - Assembler output
   - ![image](https://github.com/tommygood/Assembler/assets/96759292/96cd9a14-58af-400a-922d-60bac106df76)
+### 其他
+- <a href="https://hackmd.io/@tommygood/SIC-XE-Assembler">note</a>
+- <a href="https://hackmd.io/@tommygood/SIC-XE-Demo-Slide">demo slide</a>
 ## Prerequisite
 - gcc : 可以在 Linux & Windows 上利用 gcc 編譯並執行。（於 Ubuntu 20.04 & Win10 + `gcc version 9.2.0` 測試）
 ## Usage
