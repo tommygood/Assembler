@@ -7,21 +7,25 @@
 - 支援 program relocation，會在 object program 加入 Modification record
 - 支援可以更改 program 的起始位址
 ### error case
-1. redefined symbol :
-2. undefined symbol :
-3. invalid mnemonic : 
-4. first executable instruction is missed :
-5. BASE Register is not defined, while base-relative is used :
-6. basic instruction before the program start :
+1. redefined symbol
+2. undefined symbol
+3. invalid mnemonic
+4. first executable instruction is missed
+5. BASE Register is not defined, while base-relative is used
+6. basic instruction before the program start
+7. Symbol name conflict with mnemonic or operand
+8. Integer Operand must be decimal in the WORD, RESW, RESB
+9. RSUB can not have oeprand
 ### 資料結構
 #### Hash
 - hash function : mod（將字串的所有字元 ascii code 加總後，和 hash table length 相除取餘數得到 index）
+- probing method : linear probing
 - 利用 hash 去製作 table of opcode & symbol & forward reference
   - 因為在初始時，會先去 scan 一次 source program 去確認總共的行數，故可以確保 hash table 的 bucket 數量足夠，進而讓搜尋的時間複雜度維持在一定水準（In Avg Case, store and search is Θ(1)）
-  - 這邊的 forward reference table 不用使用 linked list 的原因：因 hash value 是以 `symbol forward_reference_line_number_1 forward_reference_line_number_2` 的格式去存值。<br/>
-  但在做 hash function 找 index 時，會以 split 去切割空白，並只取用 symbol 作為要做 hash function 的對象，所以得到的 index 也會是以該 symbol 計算而來的。
+
 ### 流程圖
-- <img src="https://hackmd.io/_uploads/ryHLLVTVC.png"/>
+<img src="https://hackmd.io/_uploads/rypH1g0N0.png"/>
+
 ### Demo
 #### test program 1
 - <a href = "https://github.com/tommygood/Assembler/blob/master/testprog3.S">source program</a> 
